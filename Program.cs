@@ -9,7 +9,7 @@ app.MapGet("/api/data/{page}", async (int page) =>
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     using var connection = new SqliteConnection(connectionString);
     
-    int pageSize = 50; // Set the number of records per page
+    int pageSize = 500; // Set the number of records per page
     var data = await connection.QueryAsync<Data>("SELECT * FROM Data LIMIT @PageSize OFFSET @Offset", 
         new { PageSize = pageSize, Offset = page * pageSize });
 
