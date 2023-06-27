@@ -16,6 +16,18 @@ app.MapGet("/api/data/{page}", async (int page) =>
     return Results.Ok(data);
 });
 
+app.MapGet("/api/data/search/{searchTerm}", async (string searchTerm) =>
+{
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    using var connection = new SqliteConnection(connectionString);
+
+    var data = await connection.QueryAsync<Data>("SELECT * FROM Data WHERE Name LIKE @SearchTerm", 
+    new { SearchTerm = $"%{searchTerm}%" });
+
+    return Results.Ok(data);
+
+});
+
 app.MapPost("/api/populate", async () =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
