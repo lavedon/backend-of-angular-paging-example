@@ -26,7 +26,7 @@ app.MapGet("/api/data/{page}/{pageSize}", async (int page, int pageSize) =>
     var totalCount = await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM Data");
      // Set the number of records per page
     var data = await connection.QueryAsync<Data>("SELECT * FROM Data LIMIT @PageSize OFFSET @Offset", 
-        new { PageSize = pageSize, Offset = (page - 1) * pageSize });
+        new { PageSize = pageSize, Offset = page * pageSize });
 
     return Results.Ok(new { totalCount = totalCount, data = data });
 });
@@ -40,7 +40,7 @@ app.MapGet("/api/data/search/{searchTerm}/{page}/{pageSize}", async (string sear
     new { SearchTerm = $"%{searchTerm}%" });
 
     var data = await connection.QueryAsync<Data>("SELECT * FROM Data WHERE Name LIKE @SearchTerm LIMIT @PageSize OFFSET @Offset", 
-    new { SearchTerm = $"%{searchTerm}%", PageSize = pageSize, Offset = (page - 1) * pageSize });
+    new { SearchTerm = $"%{searchTerm}%", PageSize = pageSize, Offset = page * pageSize });
 
     return Results.Ok(new { totalCount = totalCount, data = data });
 });
