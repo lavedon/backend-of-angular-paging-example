@@ -15,30 +15,35 @@ builder.Services.AddCors(options =>
 });
 var app = builder.Build();
 
-app.MapGet("/api/data/{page}/{pageSize}", async (int page, int pageSize) =>
+app.MapGet("/api/data/{page}/{pageSize}", async (int page, int pageSize, string? sortColumn, string? sortDirection) =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     using var connection = new SqliteConnection(connectionString);
-    
+
     var totalCount = await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM Data");
-    var data = await connection.QueryAsync<Data>("SELECT * FROM Data LIMIT @PageSize OFFSET @Offset", 
+
+    var sortColumnSafe = new List<string>{"Name", "Occupation", "Age", "Email"}.Contains(sortColumn) ? sortColumn : "Name";
+    var sortDirectionSafe = sortDirection == "desc" ? "DESC" : "ASC";
+    var data = await connection.QueryAsync<Data>($"SELECT * FROM Data ORDER BY {sortColumnSafe} {sortDirectionSafe} LIMIT @PageSize OFFSET @Offset", 
         new { PageSize = pageSize, Offset = page * pageSize });
 
     return Results.Ok(new { totalCount = totalCount, data = data });
 });
 
-app.MapGet("/api/data/search/{page}/{pageSize}", async (int page, int pageSize, string searchTerm) => 
+app.MapGet("/api/data/search/{page}/{pageSize}", async (int page, int pageSize, string searchTerm, string? sortColumn, string? sortDirection) => 
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     using var connection = new SqliteConnection(connectionString);
 
     var totalCount = 0;
     var data = Enumerable.Empty<Data>();
+    var sortColumnSafe = new List<string>{"Name", "Occupation", "Age", "Email"}.Contains(sortColumn) ? sortColumn : "Name";
+    var sortDirectionSafe = sortDirection == "desc" ? "DESC" : "ASC";
 
     if (string.IsNullOrEmpty(searchTerm))
     {
         totalCount = await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM Data");
-        data = await connection.QueryAsync<Data>("SELECT * FROM Data LIMIT @PageSize OFFSET @Offset", 
+        data = await connection.QueryAsync<Data>($"SELECT * FROM Data ORDER BY {sortColumnSafe} {sortDirectionSafe} LIMIT @PageSize OFFSET @Offset", 
         new { PageSize = pageSize, Offset = page * pageSize });
     }
     else
@@ -46,12 +51,13 @@ app.MapGet("/api/data/search/{page}/{pageSize}", async (int page, int pageSize, 
         totalCount = await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM Data WHERE Name LIKE @SearchTerm",
         new { SearchTerm = $"%{searchTerm}%" });
 
-        data = await connection.QueryAsync<Data>("SELECT * FROM Data WHERE Name LIKE @SearchTerm LIMIT @PageSize OFFSET @Offset", 
+        data = await connection.QueryAsync<Data>($"SELECT * FROM Data WHERE Name LIKE @SearchTerm ORDER BY {sortColumnSafe} {sortDirectionSafe} LIMIT @PageSize OFFSET @Offset", 
         new { SearchTerm = $"%{searchTerm}%", PageSize = pageSize, Offset = page * pageSize });
     }
 
     return Results.Ok(new { totalCount = totalCount, data = data });
 });
+
 
 app.MapPost("/api/populate", async () =>
 {
