@@ -1,17 +1,31 @@
 ﻿using Microsoft.Data.Sqlite;
+using Microsoft.AspNetCore.Cors.Infrastructure;
 using Dapper;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowSpecificOrigin",
+        builder =>
+        {
+            builder.WithOrigins("http://localhost:4200")
+                   .AllowAnyHeader()
+                   .AllowAnyMethod();
+        });
+});
 var app = builder.Build();
 
-app.MapGet("/api/data/{page}", async (int page) =>
+
+
+
+app.MapGet("/api/data/{page}/{pageSize}", async (int page, int pageSize) =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     using var connection = new SqliteConnection(connectionString);
     
-    int pageSize = 500; // Set the number of records per page
+     // Set the number of records per page
     var data = await connection.QueryAsync<Data>("SELECT * FROM Data LIMIT @PageSize OFFSET @Offset", 
-        new { PageSize = pageSize, Offset = page * pageSize });
+        new { PageSize = pageSize, Offset = (page - 1) * pageSize });
 
     return Results.Ok(data);
 });
@@ -56,4 +70,10 @@ app.MapPost("/api/populate", async () =>
     return Results.Ok();
 });
 
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
+
+app.UseCors("AllowSpecificOrigin");
 app.Run();
