@@ -23,23 +23,26 @@ app.MapGet("/api/data/{page}/{pageSize}", async (int page, int pageSize) =>
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     using var connection = new SqliteConnection(connectionString);
     
+    var totalCount = await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM Data");
      // Set the number of records per page
     var data = await connection.QueryAsync<Data>("SELECT * FROM Data LIMIT @PageSize OFFSET @Offset", 
         new { PageSize = pageSize, Offset = (page - 1) * pageSize });
 
-    return Results.Ok(data);
+    return Results.Ok(new { totalCount = totalCount, data = data });
 });
 
-app.MapGet("/api/data/search/{searchTerm}", async (string searchTerm) =>
+app.MapGet("/api/data/search/{searchTerm}/{page}/{pageSize}", async (string searchTerm, int page, int pageSize) => 
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     using var connection = new SqliteConnection(connectionString);
 
-    var data = await connection.QueryAsync<Data>("SELECT * FROM Data WHERE Name LIKE @SearchTerm", 
+    var totalCount = await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM Data WHERE Name LIKE @SearchTerm",
     new { SearchTerm = $"%{searchTerm}%" });
 
-    return Results.Ok(data);
+    var data = await connection.QueryAsync<Data>("SELECT * FROM Data WHERE Name LIKE @SearchTerm LIMIT @PageSize OFFSET @Offset", 
+    new { SearchTerm = $"%{searchTerm}%", PageSize = pageSize, Offset = (page - 1) * pageSize });
 
+    return Results.Ok(new { totalCount = totalCount, data = data });
 });
 
 app.MapPost("/api/populate", async () =>
